@@ -1,0 +1,10 @@
+{
+    "files": {
+        "raw_data": "data\\raw\\jobs_dataset_without_solution.xlsx",
+        "y_testdata": "data\\raw\\y_test.csv"
+    },
+    "explanation": {
+        "raw_data": "Training dataset in Excel format as downloaded from mail.",
+        "y_testdata": "Training testdata as downloaded from mail in CSV format."
+    }
+}
