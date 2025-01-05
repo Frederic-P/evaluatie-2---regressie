@@ -2,6 +2,8 @@ import os
 import pandas as pd
 import json
 from IPython.display import display
+import matplotlib.pyplot as plt
+from rapidfuzz import process, fuzz
 
 def get_file_organization(verbose = False):
     """reads the filedata.json file where data file structure is organized."""
@@ -85,3 +87,164 @@ def extractor(full_title):
 
 
     return [field, title]
+
+
+def assign_country_codes(df_processed, income_df, processed_country_col, income_country_col, income_code_col, new_col_name):
+    """
+    Assigns the country codes from income_df to df_processed based on the highest fuzzy match score.
+    
+    Parameters:
+        df_processed (pd.DataFrame): The dataframe to assign country codes.
+        income_df (pd.DataFrame): The dataframe containing reference countries and their codes.
+        processed_country_col (str): The column name in df_processed containing country names.
+        income_country_col (str): The column name in income_df containing reference country names.
+        income_code_col (str): The column name in income_df containing country codes.
+    
+    Returns:
+        pd.DataFrame: The updated df_processed with an additional countrycode column.
+
+    DISCLOSURE: Based on MWE made by ChatGPT, modified to fit needs.
+    """
+    # Create a mapping for country names to country codes
+    country_to_code = dict(zip(income_df[income_country_col], income_df[income_code_col]))
+    
+    # Create a list of reference country names
+    reference_countries = list(country_to_code.keys())
+    
+    # Initialize a column for country codes in df_processed
+    df_processed[new_col_name] = None
+    
+    # Iterate through the rows in df_processed
+    for index, row in df_processed.iterrows():
+        # Get the country name from df_processed
+        country_name = row[processed_country_col]
+        
+        # Find the best match for the country name in the reference list
+        best_match, score, _ = process.extractOne(
+            country_name, reference_countries, scorer=fuzz.token_sort_ratio
+        )
+        
+        # Assign the corresponding country code if the match is confident enough
+        if score > 80:  # Threshold for matching (adjust as needed)
+            df_processed.at[index, new_col_name] = country_to_code[best_match]
+
+    #patch for None values revealed by inspecting the unique_countries df: 
+    #jersey is a british crown dependency, so we'll just assign it the code of the UK and be done with it.
+    replacements = {
+        'egypt': 'EGY', 
+        'korea_': 'KOR', 
+        'czechia': 'CZE', 
+        'bahamas': 'BHS', 
+        'hong_kong': 'HKG', 
+        'jersey': 'GBR',
+        'bolivia_plurinational_state_of': 'BOL'
+        }
+    for k,v in replacements.items():
+        df_processed.loc[df_processed[processed_country_col] == k, new_col_name] = v
+
+    
+    return df_processed
+
+def get_alphabetically(df, column):
+    """Takes a pandas DF (df) and a string (column) which is the name of a column in df
+    and returns an alphabetical list of values in that column. """
+    l = df[column].unique()
+    l.sort()
+    return l 
+
+def cleanup_strings(df, column, kvdict): 
+    """Takes a pandas DF (df), a string (column) which is the name of a column in df 
+    and a python dictionary in key(str)-value(str) formwat where key is the value 
+    to be replace and value is the stringvalue it should be replaced with"""
+    df = df.copy()
+    df[column] = df[column].str.lower() #better for fuzzy matching required in stage 5
+    for key, value in kvdict.items():
+        df[column] = df[column].str.replace(key, value, regex=True)
+    return df
+
+def make_clusters(df, all_keys, exception_key): 
+    """
+        makes a groupby cluser of df based on all_keys with the exception of exception_key. 
+
+        parametes:
+            df = pandas dataframe (df_processed)
+            all_keys = list of keys to group by
+            exception_key = key to exclude from the groupby
+    """
+    groupkeys = all_keys.copy()
+    groupkeys.remove(exception_key)
+    cluster = (df.groupby(groupkeys)  # Group by these columns
+        .size()
+        .reset_index(name='count')  # Add counts as a new column
+        .sort_values(by='count', ascending=False)  # Sort by counts in descending order
+    )
+    return cluster
+
+def query_main_dataframe(row_index, combination_counts, main_df):
+    """
+    Query the main DataFrame for rows that match the constraints of a specified row in combination_counts.
+    
+    Parameters:
+        row_index (int): The row index in combination_counts to use for constraints.
+        combination_counts (pd.DataFrame): The DataFrame containing unique combinations and their counts.
+            work_year, company_location, title, field, employment_type, work_setting, experience_level are required columns!!
+            thus, these should be in your group by statement you use to generate the combination_counts Dataframe.
+        main_df (pd.DataFrame): The main DataFrame to query.
+        
+    Returns:
+        pd.DataFrame: A DataFrame with rows matching the constraints.
+        string describing the constraints used for the query.
+    """
+    constraints = combination_counts.iloc[row_index]
+    constraint_string = ''
+    conditions = []
+    for k,v in constraints.items():
+        if k == 'count':   #I don't need count as a constraint: so skip it
+            continue
+        constraint_string += f"{k} == '{v}', "
+        conditions.append(main_df[k] == v)
+    #Build a query string: 
+    final_condition = conditions[0]
+    for condition in conditions[1:]:
+        final_condition &= condition
+    query_result = main_df[final_condition]  ##apply the queyr string
+    return [query_result, constraint_string]  #return with explanation of what you queried
+
+def make_company_var_plot(df, title, key): 
+    """
+        Plots from the main DataFrame a boxplot for wage vs xlabel variable.
+    
+    Parameters:
+        df (pd.DataFrame): The main DataFrame to query.
+        tutke (string): The title of the plot.
+        xlabel (string): The column name to use for the x-axis and to determin behaviour of the funtciton. 
+        
+    Returns:
+        plt boxplot with title.    
+    """
+    xlabel = ' '.join(key.split('_')).capitalize()
+    # Predefined order of company sizes according to the given key
+    if key  == 'company_size':
+        order = ['S', 'M', 'L']  # Ensure order is maintained
+    elif key == 'experience_level':
+        order = ['Entry-level', 'Mid-level', 'Senior', 'Executive']
+    elif key == 'work_setting': 
+        order = ['In-person', 'Hybrid', 'Remote']
+    elif key == 'employment_type': 
+        order = ['Full-time' , 'Part-time', 'Freelance', 'Contract']
+    
+    # Prepare data for boxplots and count records for labels
+    subset_data = []
+    labels = []
+    for size in order:
+        size_data = df[df[key] == size]['target']
+        subset_data.append(size_data)
+        record_count = len(size_data)
+        labels.append(f"{size} ({record_count})")  # Add count to label
+
+    plt.figure(figsize=(9, 6))
+    plt.boxplot(subset_data, tick_labels=labels)
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel("Wage")
+    return plt
