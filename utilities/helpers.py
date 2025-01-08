@@ -5,6 +5,17 @@ from IPython.display import display
 import matplotlib.pyplot as plt
 from rapidfuzz import process, fuzz
 
+
+import matplotlib as mpl
+mpl.rcParams['axes.titlesize'] = 16
+mpl.rcParams['axes.labelsize'] = 14
+mpl.rcParams['axes.grid'] = False
+mpl.rcParams['xtick.labelsize'] = 12
+mpl.rcParams['ytick.labelsize'] = 12
+mpl.rcParams['figure.figsize'] = [16, 9]
+mpl.rcParams['xtick.labelsize'] = 14
+mpl.rcParams['ytick.labelsize'] = 14
+
 def get_file_organization(verbose = False):
     """reads the filedata.json file where data file structure is organized."""
     base = os.getcwd()
