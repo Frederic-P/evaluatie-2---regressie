@@ -15,6 +15,7 @@ type: `python -m venv .` **the final dot is important**, it will create the venv
 ## Data directory/management.
 - Excel used for training the data should be in the `data/raw` directory and should be called `jobs_dataset_without_solution.xls`
 - CSV file used for testing the data should be in the `data/raw` directory and should be called `y_test.csv`
+- data directory should be placed in the root level of this directory - i.e. in the same directory of the notebook itself. 
 
 ## Data engineering
 - Data is downloaded from the World Bank to generate Income classes and GDP/capita; an active internet connection is required and write permission to the `data/raw` directory is needed. Code for caching downloaded files and checking for existence is not implemented, so the notebook will download the file each time (pros and cons to this approach). 
