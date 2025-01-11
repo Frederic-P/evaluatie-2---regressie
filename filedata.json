@@ -1,10 +1,15 @@
 {
     "files": {
         "raw_data": "data\\raw\\jobs_dataset_without_solution.xlsx",
-        "y_testdata": "data\\raw\\y_test.csv"
+        "y_testdata": "data\\raw\\y_test.csv", 
+        "downloaddir": "data\\raw", 
+        "outputfile": "data\\output\\y_test.csv"
+
     },
     "explanation": {
         "raw_data": "Training dataset in Excel format as downloaded from mail.",
-        "y_testdata": "Training testdata as downloaded from mail in CSV format."
+        "y_testdata": "Training testdata as downloaded from mail in CSV format.", 
+        "downloaddir": "Where to store downloaded files from World Bank? (write permission required!!)", 
+        "outputfile": "Where to store the output file (write permission required!!)"
     }
 }

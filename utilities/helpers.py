@@ -5,13 +5,12 @@ from IPython.display import display
 import matplotlib.pyplot as plt
 from rapidfuzz import process, fuzz
 
-
+#standard style for plots: (helpers is imported in the notebook, so applied there. )
 import matplotlib as mpl
 mpl.rcParams['axes.titlesize'] = 16
+mpl.rcParams['figure.titlesize'] = 16
 mpl.rcParams['axes.labelsize'] = 14
 mpl.rcParams['axes.grid'] = False
-mpl.rcParams['xtick.labelsize'] = 12
-mpl.rcParams['ytick.labelsize'] = 12
 mpl.rcParams['figure.figsize'] = [16, 9]
 mpl.rcParams['xtick.labelsize'] = 14
 mpl.rcParams['ytick.labelsize'] = 14
@@ -34,6 +33,13 @@ def get_file_organization(verbose = False):
     
     display(df)
     return config['files']
+
+def is_employee_of_country(df):
+    """adds a bool to df to indicate whether or not an entry is for an employee
+      who has his residence in the same country as the company location."""
+    df_internal = df.copy()
+    df_internal['employee_of_country']  = df_internal['employee_residence'] == df_internal['company_location']
+    return df_internal
 
 
 def extractor(full_title):
@@ -253,9 +259,22 @@ def make_company_var_plot(df, title, key):
         record_count = len(size_data)
         labels.append(f"{size} ({record_count})")  # Add count to label
 
-    plt.figure(figsize=(9, 6))
     plt.boxplot(subset_data, tick_labels=labels)
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel("Wage")
     return plt
+
+
+
+def to_dataframe(X_transformed, transformer, columns):
+    """converts a sparse dataframe back to a normal pndas dataframe"""
+    if hasattr(X_transformed, "toarray"):  # Check if the result is a sparse matrix
+        X_transformed = X_transformed.toarray()  # Convert to dense
+    # If the transformer has feature names, use them; otherwise, use a range of integers
+    if hasattr(transformer, 'get_feature_names_out'):
+        new_columns = transformer.get_feature_names_out(columns)
+    else:
+        new_columns = range(X_transformed.shape[1])  # Fallback for when feature names are not available
+    return pd.DataFrame(X_transformed, columns=new_columns)
+
